@@ -42,8 +42,8 @@ export const QUESTION = {
     type: "boolean",
     instructions: "Does the owner or their assistant need to know about this phone notification right now?",
     criteria: {
-        true: "A message, alert, delivery, security or account event, or anything time-sensitive that a person should act on or know about",
-        false: "Routine noise: an ongoing status, a progress bar, charging or connection state, a repeated update, promotion or app chatter",
+        true: "A message from a person, an alert, a delivery, a security, banking or account event, a calendar or reminder, or anything time-sensitive that a person should act on or know about",
+        false: "Routine noise: media playback and now-playing updates (music, podcasts, video), an ongoing status, a progress bar, charging or connection state, a repeated update, a promotion or other app chatter",
     },
 };
 /** Ask the decision model one Boolean question. Throws on anything but an ok outcome. */

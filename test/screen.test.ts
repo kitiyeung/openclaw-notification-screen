@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BLOCK_MESSAGE, PLUGIN_ID, askDecision, createScreen, parseNotification, resolveConfig,
+  BLOCK_MESSAGE, PLUGIN_ID, QUESTION, askDecision, createScreen, parseNotification, resolveConfig,
 } from "../src/screen.ts";
 
 // Made-up notifications in the shape OpenClaw forwards.
@@ -157,6 +157,11 @@ test("askDecision: ok boolean answer returns probabilityTrue; builds one boolean
   assert.equal(seen.req.questions.needed.type, "boolean");
   assert.deepEqual(seen.req.state, { package: "a.b", notification: "t" });
   assert.equal(seen.opts.timeoutMs, 1234);
+});
+test("question names media playback as noise and a message as needed", () => {
+  assert.match(QUESTION.criteria.false, /media playback|now-playing/);
+  assert.match(QUESTION.criteria.false, /charging/);
+  assert.match(QUESTION.criteria.true, /message from a person/);
 });
 test("askDecision: unavailable, missing and malformed answers throw", async () => {
   for (const out of [
