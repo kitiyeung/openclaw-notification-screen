@@ -42,8 +42,13 @@ notification text is not kept.
 
 ## Install and configure
 
+OpenClaw loads the compiled `dist/index.js` from an installed package (`openclaw.runtimeExtensions`),
+so build before packing. `npm pack` runs the build through `prepack`, and `dist/` is committed so a
+checkout installs too.
+
 ```bash
-openclaw plugins install <path-or-package>
+npm install && npm pack          # builds dist/ and writes openclaw-notification-screen-<version>.tgz
+openclaw plugins install npm-pack:./openclaw-notification-screen-<version>.tgz
 openclaw plugins enable notification-screen
 ```
 
