@@ -74,6 +74,7 @@ openclaw plugins enable notification-screen
 | `mode` | `shadow` | `shadow` evaluates and logs but always passes. `live` blocks noise. |
 | `decisionTimeoutMs` | `4000` | The plugin's own limit on one decision, well under the hook budget. |
 | `threshold` | `0.5` | Probability of "needed" below which a posting is noise. |
+| `question` | built in | The Boolean question put to the decision model: `instructions`, and `criteria.true` and `criteria.false` describing what is needed and what is noise. Omitted parts use the built-in wording; tune it here, no code change. |
 | `sessionKey` | `agent:main:main` | The session whose notification turns are screened. |
 
 Run in `shadow` mode first and compare the logged verdicts with what you would have wanted. Undo

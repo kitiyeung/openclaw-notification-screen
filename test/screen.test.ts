@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BLOCK_MESSAGE, PLUGIN_ID, QUESTION, askDecision, createScreen, parseNotification, resolveConfig,
+  BLOCK_MESSAGE, DEFAULT_QUESTION, PLUGIN_ID, askDecision, createScreen, parseNotification, resolveConfig,
 } from "../src/screen.ts";
 
 // Made-up notifications in the shape OpenClaw forwards.
@@ -158,10 +158,28 @@ test("askDecision: ok boolean answer returns probabilityTrue; builds one boolean
   assert.deepEqual(seen.req.state, { package: "a.b", notification: "t" });
   assert.equal(seen.opts.timeoutMs, 1234);
 });
-test("question names media playback as noise and a message as needed", () => {
-  assert.match(QUESTION.criteria.false, /media playback|now-playing/);
-  assert.match(QUESTION.criteria.false, /charging/);
-  assert.match(QUESTION.criteria.true, /message from a person/);
+test("default question names media playback as noise and a message as needed", () => {
+  assert.match(DEFAULT_QUESTION.criteria.false, /media playback|now-playing/);
+  assert.match(DEFAULT_QUESTION.criteria.false, /charging/);
+  assert.match(DEFAULT_QUESTION.criteria.true, /message from a person/);
+  assert.deepEqual(resolveConfig({}).question, DEFAULT_QUESTION);
+});
+test("config: a custom question is used and sent to the decision model", async () => {
+  const q = { instructions: "Custom?", criteria: { true: "yes text", false: "no text" } };
+  assert.deepEqual(resolveConfig({ question: q }).question, q);
+  let sent: any;
+  await askDecision(async (req) => {
+    sent = req;
+    return { status: "ok", result: { answers: { needed: { type: "boolean", probabilityTrue: 0.5 } } } };
+  }, { pkg: "a", text: "b" }, { timeoutMs: 1, question: q });
+  assert.deepEqual(sent.questions.needed, { type: "boolean", ...q });
+});
+test("config: invalid question parts fall back to their defaults", () => {
+  const q = resolveConfig({ question: { instructions: "", criteria: { true: 5, false: "kept" } } }).question;
+  assert.equal(q.instructions, DEFAULT_QUESTION.instructions);
+  assert.equal(q.criteria.true, DEFAULT_QUESTION.criteria.true);
+  assert.equal(q.criteria.false, "kept");
+  assert.deepEqual(resolveConfig({ question: "nonsense" }).question, DEFAULT_QUESTION);
 });
 test("askDecision: unavailable, missing and malformed answers throw", async () => {
   for (const out of [
