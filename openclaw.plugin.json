@@ -1,0 +1,16 @@
+{
+  "id": "notification-screen",
+  "name": "Notification screen",
+  "description": "Screens forwarded phone notifications with a local decision model before the main agent's model runs.",
+  "activation": { "onStartup": true },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "mode": { "type": "string", "enum": ["shadow", "live"], "default": "shadow" },
+      "decisionTimeoutMs": { "type": "integer", "minimum": 100, "maximum": 10000, "default": 4000 },
+      "threshold": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.5 },
+      "sessionKey": { "type": "string", "default": "agent:main:main" }
+    }
+  }
+}

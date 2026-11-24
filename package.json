@@ -1,0 +1,35 @@
+{
+  "name": "openclaw-notification-screen",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin that screens forwarded phone notifications with a local decision model before the main agent's model runs.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "notifications",
+    "onnx"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepack": "npm run build",
+    "test": "node --test test/*.test.ts"
+  },
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ]
+  },
+  "files": [
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}
