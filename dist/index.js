@@ -16,6 +16,7 @@ export default definePluginEntry({
                 agentId: agentIdOf(config.sessionKey),
                 timeoutMs: config.decisionTimeoutMs,
                 signal,
+                question: config.question,
             }),
         });
         api.on("before_agent_run", (event, ctx) => screen.beforeAgentRun(event, ctx));

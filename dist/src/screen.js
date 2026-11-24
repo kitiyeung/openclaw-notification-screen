@@ -1,18 +1,40 @@
 // Core logic. No OpenClaw imports, so it runs under plain `node --test`.
 export const PLUGIN_ID = "notification-screen";
 export const BLOCK_MESSAGE = "Phone notification screened";
+export const DEFAULT_QUESTION = {
+    instructions: "Does the owner or their assistant need to know about this phone notification right now?",
+    criteria: {
+        true: "A message from a person, an alert, a delivery, a security, banking or account event, a calendar or reminder, or anything time-sensitive that a person should act on or know about",
+        false: "Routine noise: media playback and now-playing updates (music, podcasts, video), an ongoing status, a progress bar, charging or connection state, a repeated update, a promotion or other app chatter",
+    },
+};
 export const DEFAULT_CONFIG = {
     mode: "shadow",
+    question: DEFAULT_QUESTION,
     decisionTimeoutMs: 4000,
     threshold: 0.5,
     sessionKey: "agent:main:main",
 };
+const text = (v, d) => typeof v === "string" && v.trim().length > 0 && v.length <= 1000 ? v : d;
+/** A question needs all three texts; any invalid part falls back to its default. */
+function resolveQuestion(raw) {
+    const r = raw && typeof raw === "object" ? raw : {};
+    const c = r.criteria && typeof r.criteria === "object" ? r.criteria : {};
+    return {
+        instructions: text(r.instructions, DEFAULT_QUESTION.instructions),
+        criteria: {
+            true: text(c.true, DEFAULT_QUESTION.criteria.true),
+            false: text(c.false, DEFAULT_QUESTION.criteria.false),
+        },
+    };
+}
 /** Invalid or missing values fall back to the defaults, never throw. */
 export function resolveConfig(raw) {
     const r = raw && typeof raw === "object" ? raw : {};
     const num = (v, lo, hi, d) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : d;
     return {
         mode: r.mode === "live" ? "live" : "shadow",
+        question: resolveQuestion(r.question),
         decisionTimeoutMs: num(r.decisionTimeoutMs, 100, 10000, DEFAULT_CONFIG.decisionTimeoutMs),
         threshold: num(r.threshold, 0, 1, DEFAULT_CONFIG.threshold),
         sessionKey: typeof r.sessionKey === "string" && r.sessionKey ? r.sessionKey : DEFAULT_CONFIG.sessionKey,
@@ -38,17 +60,9 @@ export function parseNotification(prompt) {
         text = text.slice(0, runtime).trim();
     return { kind: "posted", pkg, text };
 }
-export const QUESTION = {
-    type: "boolean",
-    instructions: "Does the owner or their assistant need to know about this phone notification right now?",
-    criteria: {
-        true: "A message, alert, delivery, security or account event, or anything time-sensitive that a person should act on or know about",
-        false: "Routine noise: an ongoing status, a progress bar, charging or connection state, a repeated update, promotion or app chatter",
-    },
-};
 /** Ask the decision model one Boolean question. Throws on anything but an ok outcome. */
 export async function askDecision(evaluate, note, opts) {
-    const outcome = await evaluate({ state: { package: note.pkg, notification: note.text }, questions: { needed: QUESTION } }, {
+    const outcome = await evaluate({ state: { package: note.pkg, notification: note.text }, questions: { needed: { type: "boolean", ...(opts.question ?? DEFAULT_QUESTION) } } }, {
         agentId: opts.agentId,
         purpose: "notification.screen",
         rubricVersion: "1",

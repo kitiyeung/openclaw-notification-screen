@@ -5,8 +5,23 @@ export const BLOCK_MESSAGE = "Phone notification screened";
 
 export type Mode = "shadow" | "live";
 
+export interface Question {
+  instructions: string;
+  criteria: { true: string; false: string };
+}
+
+export const DEFAULT_QUESTION: Question = {
+  instructions:
+    "Does the owner or their assistant need to know about this phone notification right now?",
+  criteria: {
+    true: "A message from a person, an alert, a delivery, a security, banking or account event, a calendar or reminder, or anything time-sensitive that a person should act on or know about",
+    false: "Routine noise: media playback and now-playing updates (music, podcasts, video), an ongoing status, a progress bar, charging or connection state, a repeated update, a promotion or other app chatter",
+  },
+};
+
 export interface ScreenConfig {
   mode: Mode;
+  question: Question;
   decisionTimeoutMs: number;
   threshold: number;
   sessionKey: string;
@@ -14,10 +29,27 @@ export interface ScreenConfig {
 
 export const DEFAULT_CONFIG: ScreenConfig = {
   mode: "shadow",
+  question: DEFAULT_QUESTION,
   decisionTimeoutMs: 4000,
   threshold: 0.5,
   sessionKey: "agent:main:main",
 };
+
+const text = (v: unknown, d: string) =>
+  typeof v === "string" && v.trim().length > 0 && v.length <= 1000 ? v : d;
+
+/** A question needs all three texts; any invalid part falls back to its default. */
+function resolveQuestion(raw: unknown): Question {
+  const r = raw && typeof raw === "object" ? (raw as Record<string, any>) : {};
+  const c = r.criteria && typeof r.criteria === "object" ? r.criteria : {};
+  return {
+    instructions: text(r.instructions, DEFAULT_QUESTION.instructions),
+    criteria: {
+      true: text(c.true, DEFAULT_QUESTION.criteria.true),
+      false: text(c.false, DEFAULT_QUESTION.criteria.false),
+    },
+  };
+}
 
 /** Invalid or missing values fall back to the defaults, never throw. */
 export function resolveConfig(raw: unknown): ScreenConfig {
@@ -26,6 +58,7 @@ export function resolveConfig(raw: unknown): ScreenConfig {
     typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi ? v : d;
   return {
     mode: r.mode === "live" ? "live" : "shadow",
+    question: resolveQuestion(r.question),
     decisionTimeoutMs: num(r.decisionTimeoutMs, 100, 10000, DEFAULT_CONFIG.decisionTimeoutMs),
     threshold: num(r.threshold, 0, 1, DEFAULT_CONFIG.threshold),
     sessionKey:
@@ -64,24 +97,15 @@ export type Evaluate = (
   options: Record<string, unknown>,
 ) => Promise<{ status: string; result?: { answers?: Record<string, any> } } | undefined>;
 
-export const QUESTION = {
-  type: "boolean",
-  instructions:
-    "Does the owner or their assistant need to know about this phone notification right now?",
-  criteria: {
-    true: "A message, alert, delivery, security or account event, or anything time-sensitive that a person should act on or know about",
-    false: "Routine noise: an ongoing status, a progress bar, charging or connection state, a repeated update, promotion or app chatter",
-  },
-};
 
 /** Ask the decision model one Boolean question. Throws on anything but an ok outcome. */
 export async function askDecision(
   evaluate: Evaluate,
   note: { pkg: string; text: string },
-  opts: { agentId?: string; timeoutMs: number; signal?: AbortSignal },
+  opts: { agentId?: string; timeoutMs: number; signal?: AbortSignal; question?: Question },
 ): Promise<Verdict> {
   const outcome = await evaluate(
-    { state: { package: note.pkg, notification: note.text }, questions: { needed: QUESTION } },
+    { state: { package: note.pkg, notification: note.text }, questions: { needed: { type: "boolean", ...(opts.question ?? DEFAULT_QUESTION) } } },
     {
       agentId: opts.agentId,
       purpose: "notification.screen",
