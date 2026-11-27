@@ -1,14 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  BLOCK_MESSAGE, DEFAULT_QUESTION, PLUGIN_ID, askDecision, createScreen, parseNotification, resolveConfig,
+  BLOCK_MESSAGE, DEFAULT_QUESTION, askDecision, createScreen, parseNotification, resolveConfig,
 } from "../src/screen.ts";
 
 // Made-up notifications in the shape OpenClaw forwards.
 const posted = (pkg: string, body = "Order shipped - Your parcel is on the way") =>
   `Notification posted (node=n1 key=k1 package=${pkg}): ${body}\n\nRuntime: agent=main host=h`;
 const removed = (pkg: string) => `Notification removed (node=n1 key=k1 package=${pkg})\n\nRuntime: x`;
-const EVENT = { trigger: "event", sessionKey: "agent:main:main" };
+const EVENT = { trigger: "event", sessionKey: "agent:main:notifications" };
 
 function build(overrides: Record<string, unknown>, decide: (...a: any[]) => Promise<{ probability: number }>) {
   const lines: string[] = [];
@@ -37,9 +37,10 @@ test("scope: out-of-scope turns pass synchronously (no promise)", () => {
   const { screen } = build({ mode: "live" }, p(0));
   const cases: [any, any][] = [
     [{ prompt: "hi there" }, EVENT],
-    [{ prompt: posted("a.b") }, { trigger: "user", sessionKey: "agent:main:main" }],
-    [{ prompt: posted("a.b") }, { trigger: "cron", sessionKey: "agent:main:main" }],
+    [{ prompt: posted("a.b") }, { trigger: "user", sessionKey: "agent:main:notifications" }],
+    [{ prompt: posted("a.b") }, { trigger: "cron", sessionKey: "agent:main:notifications" }],
     [{ prompt: posted("a.b") }, { trigger: "event", sessionKey: "agent:other:main" }],
+    [{ prompt: posted("a.b") }, { trigger: "event", sessionKey: "agent:main:main" }],
     [{ prompt: "Restarted" }, EVENT],
     [undefined, undefined],
     [{ prompt: 5 }, EVENT],
@@ -124,22 +125,13 @@ test("daily line format and reset", async () => {
   assert.equal(screen.dailyLine(), "notification-screen: handled=0 declined=0 errors=0");
 });
 
-test("message_sending cancels only the plugin's own notice on the session", () => {
+test("no send hook: the screen exposes nothing that cancels or edits outgoing messages", () => {
   const { screen } = build({}, p(1));
-  const own = `Your message could not be sent: ${BLOCK_MESSAGE} (blocked by ${PLUGIN_ID})`;
-  assert.deepEqual(screen.messageSending({ content: own }, { sessionKey: "agent:main:main" }), {
-    cancel: true, cancelReason: "notification screen block notice",
-  });
-  for (const [e, c] of [
-    [{ content: own }, { sessionKey: "agent:other:main" }],
-    [{ content: "Your message could not be sent: x (blocked by before_agent_run)" }, { sessionKey: "agent:main:main" }],
-    [{ content: "Your message could not be sent: x (blocked by other-plugin)" }, { sessionKey: "agent:main:main" }],
-    [{ content: "normal reply" }, { sessionKey: "agent:main:main" }],
-    [{ content: 5 }, { sessionKey: "agent:main:main" }],
-    [undefined, undefined],
-  ] as any[]) {
-    assert.equal(screen.messageSending(e, c), undefined);
-  }
+  assert.deepEqual(Object.keys(screen).sort(), ["beforeAgentRun", "counts", "dailyLine"]);
+});
+test("config: the screened session defaults to the notifications session, not the owner's main chat", () => {
+  assert.equal(resolveConfig(undefined).sessionKey, "agent:main:notifications");
+  assert.equal(resolveConfig({ sessionKey: "agent:main:main" }).sessionKey, "agent:main:main");
 });
 
 test("config: invalid values fall back to defaults", () => {

@@ -31,7 +31,7 @@
       },
       "sessionKey": {
         "type": "string",
-        "default": "agent:main:main"
+        "default": "agent:main:notifications"
       },
       "question": {
         "type": "object",
