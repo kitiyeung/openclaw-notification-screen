@@ -20,7 +20,6 @@ export default definePluginEntry({
             }),
         });
         api.on("before_agent_run", (event, ctx) => screen.beforeAgentRun(event, ctx));
-        api.on("message_sending", (event, ctx) => screen.messageSending(event, ctx));
         const timer = setInterval(() => api.logger.info(screen.dailyLine()), DAY_MS);
         timer.unref?.();
         api.logger.info(`notification-screen: registered mode=${config.mode}`);

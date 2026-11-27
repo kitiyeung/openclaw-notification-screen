@@ -32,7 +32,7 @@ export const DEFAULT_CONFIG: ScreenConfig = {
   question: DEFAULT_QUESTION,
   decisionTimeoutMs: 4000,
   threshold: 0.5,
-  sessionKey: "agent:main:main",
+  sessionKey: "agent:main:notifications",
 };
 
 const text = (v: unknown, d: string) =>
@@ -148,7 +148,6 @@ export function createScreen(deps: Deps) {
     reason: "notification screened by local decision model",
     message: BLOCK_MESSAGE,
   };
-  const notice = `${BLOCK_MESSAGE} (blocked by ${PLUGIN_ID})`;
 
   async function screenPosted(note: { pkg: string; text: string }): Promise<RunDecision> {
     const started = Date.now();
@@ -207,28 +206,11 @@ export function createScreen(deps: Deps) {
     }
   }
 
-  /** Cancels exactly this plugin's own block notice on the configured session. */
-  function messageSending(
-    event: { content?: unknown; text?: unknown } | undefined,
-    ctx: { sessionKey?: unknown } | undefined,
-  ): { cancel: true; cancelReason: string } | undefined {
-    try {
-      if (ctx?.sessionKey !== config.sessionKey) return undefined;
-      const text = event?.content ?? event?.text;
-      if (typeof text === "string" && text.includes(notice)) {
-        return { cancel: true, cancelReason: "notification screen block notice" };
-      }
-    } catch {
-      /* fall through: send the message */
-    }
-    return undefined;
-  }
-
   function dailyLine(): string {
     const line = `notification-screen: handled=${counts.handled} declined=${counts.declined} errors=${counts.errors}`;
     counts.handled = counts.declined = counts.errors = 0;
     return line;
   }
 
-  return { beforeAgentRun, messageSending, dailyLine, counts };
+  return { beforeAgentRun, dailyLine, counts };
 }
